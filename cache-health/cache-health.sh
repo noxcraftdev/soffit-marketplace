@@ -34,6 +34,19 @@ no_output() {
   echo '{"output": "--", "components": ["cold", "hit", "churn"]}'
 }
 
+# Fallback: find most recently modified JSONL when soffit doesn't send session_id
+if [[ -z "$SID" ]]; then
+  SID=$(python3 -c "
+import os, glob
+paths = []
+for d in [os.path.expanduser('~/.claude/projects'), os.path.expanduser('~/.config/claude/projects')]:
+    if os.path.isdir(d):
+        paths.extend(glob.glob(os.path.join(d, '*', '*.jsonl')))
+if paths:
+    newest = max(paths, key=os.path.getmtime)
+    print(os.path.splitext(os.path.basename(newest))[0])
+" 2>/dev/null)
+fi
 [[ -z "$SID" ]] && { no_output; exit 0; }
 command -v claudelytics &>/dev/null || { no_output; exit 0; }
 
