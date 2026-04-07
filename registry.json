@@ -2,6 +2,22 @@
   "defaults": [
     "vim", "agent", "version", "context_bar", "quota", "duration", "cost", "git", "session"
   ],
+  "presets": {
+    "default": {
+      "description": "Full statusline with all core widgets",
+      "line1": ["vim", "agent", "version", "context_bar", "quota", "duration", "cost"],
+      "line2": ["git"]
+    },
+    "minimal": {
+      "description": "Lightweight -- just mode and context",
+      "line1": ["vim", "context_bar"]
+    },
+    "developer": {
+      "description": "Developer focus -- git, cost tracking, session ID",
+      "line1": ["vim", "agent", "context_bar", "duration", "cost"],
+      "line2": ["git", "session"]
+    }
+  },
   "widgets": [
     {
       "name": "vim",
