@@ -17,11 +17,12 @@ except Exception:
     print('{\"output\": \"\", \"components\": [\"five_hour\", \"seven_day\"]}')
     sys.exit(0)
 
-cfg     = d.get('config', {})
-soffit  = d.get('_soffit', {})
-palette = cfg.get('palette', {})
-icons   = cfg.get('icons', {})
-data    = d.get('data', {})
+cfg      = d.get('config', {})
+soffit   = d.get('_soffit', {})
+palette  = cfg.get('palette', {})
+icons    = cfg.get('icons', {})
+data     = d.get('data', {})
+settings = cfg.get('settings', {})
 
 components     = cfg.get('components', [])
 bar_style      = cfg.get('bar_style', 'block')
@@ -200,9 +201,11 @@ if not rate_limits:
 
 segments = []
 
+show_pace_5h = settings.get('show_pace_5h', True)
+show_pace_7d = settings.get('show_pace_7d', True)
 for comp, window_secs, label, show_pace in [
-    ('five_hour', FIVE_HOURS, '5h', False),
-    ('seven_day', SEVEN_DAYS, '7d', True),
+    ('five_hour', FIVE_HOURS, '5h', show_pace_5h),
+    ('seven_day', SEVEN_DAYS, '7d', show_pace_7d),
 ]:
     if not want(comp):
         continue

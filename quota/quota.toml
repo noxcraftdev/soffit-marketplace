@@ -31,3 +31,13 @@ label = "Pace marker"
 icons_field = "quota_pace"
 default_value = "◌"
 is_char = true
+
+[settings.show_pace_5h]
+type = "bool"
+label = "Show 5-hour pace"
+default_value = true
+
+[settings.show_pace_7d]
+type = "bool"
+label = "Show 7-day pace"
+default_value = true
