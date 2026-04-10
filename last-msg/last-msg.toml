@@ -23,3 +23,27 @@ label = "Icon"
 icons_field = "icon"
 default_value = "\u23F1 "
 is_char = false
+
+[icons.cache_read]
+label = "Cache read prefix"
+icons_field = "cache_read"
+default_value = "read:"
+is_char = false
+
+[icons.cache_write]
+label = "Cache write prefix"
+icons_field = "cache_write"
+default_value = "write:"
+is_char = false
+
+[icons.cache_read_compact]
+label = "Cache read prefix (compact)"
+icons_field = "cache_read_compact"
+default_value = "R:"
+is_char = false
+
+[icons.cache_write_compact]
+label = "Cache write prefix (compact)"
+icons_field = "cache_write_compact"
+default_value = "W:"
+is_char = false

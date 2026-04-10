@@ -10,6 +10,7 @@ set -euo pipefail
 INPUT=$(cat)
 
 COMPACT=False COMPONENTS="" DIM="" LGRAY="" GREEN="" YELLOW="" RESET="" ICON=""
+READ_PREFIX="read:" WRITE_PREFIX="write:" READ_PREFIX_COMPACT="R:" WRITE_PREFIX_COMPACT="W:"
 CACHE_READ=0 CACHE_WRITE=0
 
 eval "$(echo "$INPUT" | python3 -c "
@@ -29,6 +30,10 @@ print(f'GREEN=\"{palette.get(\"success\", \"\")}\"')
 print(f'YELLOW=\"{palette.get(\"warning\", \"\")}\"')
 print(f'RESET=\"{palette.get(\"reset\", \"\")}\"')
 print(f'ICON=\"{icons.get(\"icon\", \"\u23F1 \")}\"')
+print(f'READ_PREFIX=\"{icons.get(\"cache_read\", \"read:\")}\"')
+print(f'WRITE_PREFIX=\"{icons.get(\"cache_write\", \"write:\")}\"')
+print(f'READ_PREFIX_COMPACT=\"{icons.get(\"cache_read_compact\", \"R:\")}\"')
+print(f'WRITE_PREFIX_COMPACT=\"{icons.get(\"cache_write_compact\", \"W:\")}\"')
 cr = cu.get('cache_read_input_tokens')
 cc = cu.get('cache_creation_input_tokens')
 print(f'CACHE_READ={cr if cr is not None else 0}')
@@ -80,9 +85,9 @@ if $show_cache && [[ "${HAS_CACHE:-false}" == "true" ]]; then
   fi
 
   if [[ "$COMPACT" == "True" ]]; then
-    parts="${parts}${GREEN}R:${READ_FMT}${RESET}"
+    parts="${parts}${GREEN}${READ_PREFIX_COMPACT}${READ_FMT}${RESET} ${YELLOW}${WRITE_PREFIX_COMPACT}${WRITE_FMT}${RESET}"
   else
-    parts="${parts}${GREEN}read:${READ_FMT}${RESET} ${YELLOW}write:${WRITE_FMT}${RESET}"
+    parts="${parts}${GREEN}${READ_PREFIX}${READ_FMT}${RESET} ${YELLOW}${WRITE_PREFIX}${WRITE_FMT}${RESET}"
   fi
 fi
 
