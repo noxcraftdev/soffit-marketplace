@@ -14,14 +14,15 @@ READ_PREFIX="read:" WRITE_PREFIX="write:" READ_PREFIX_COMPACT="R:" WRITE_PREFIX_
 CACHE_READ=0 CACHE_WRITE=0
 
 eval "$(echo "$INPUT" | python3 -c "
-import json, sys
+import json, os, sys
+from datetime import datetime
 d = json.load(sys.stdin)
 cfg = d.get('config', {})
 palette = cfg.get('palette', {})
 icons = cfg.get('icons', {})
 data = d.get('data', {})
-cw = data.get('context_window', {})
-cu = cw.get('current_usage', {})
+cw = data.get('context_window') or {}
+cu = cw.get('current_usage') or {}
 print(f'COMPACT={cfg.get(\"compact\", False)}')
 print('COMPONENTS=\"' + ','.join(cfg.get('components', [])) + '\"')
 print(f'DIM=\"{palette.get(\"muted\", \"\")}\"')
@@ -39,9 +40,32 @@ cc = cu.get('cache_creation_input_tokens')
 print(f'CACHE_READ={cr if cr is not None else 0}')
 print(f'CACHE_WRITE={cc if cc is not None else 0}')
 print(f'HAS_CACHE={\"true\" if cr is not None else \"false\"}')
+try:
+    tp = data.get('transcript_path')
+    last_ts = None
+    if tp and os.path.exists(tp):
+        with open(tp) as f:
+            for line in f:
+                try:
+                    e = json.loads(line)
+                except Exception:
+                    continue
+                if e.get('type') != 'user':
+                    continue
+                c = e.get('message', {}).get('content')
+                if isinstance(c, list) and c and all(isinstance(x, dict) and x.get('type') == 'tool_result' for x in c):
+                    continue
+                ts = e.get('timestamp')
+                if ts:
+                    last_ts = ts
+    if last_ts:
+        dt = datetime.fromisoformat(last_ts.replace('Z', '+00:00')).astimezone()
+        print(f'TIMESTAMP=\"{dt.strftime(\"%H:%M:%S\")}\"')
+except Exception:
+    pass
 " 2>/dev/null)"
 
-TIMESTAMP=$(date +%H:%M:%S)
+: "${TIMESTAMP:=$(date +%H:%M:%S)}"
 
 # Format token count as Xk
 fmt_k() {
