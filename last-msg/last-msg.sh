@@ -1,25 +1,26 @@
 #!/usr/bin/env bash
-# Last interaction timestamp + cache token usage
+# Cache freshness age + cache token usage
 #
-# Shows when you last interacted with Claude and how many tokens
-# were read from / written to cache. Helps you gauge cache freshness
-# and cost efficiency at a glance.
+# Shows how long since the last API call touched the prompt cache,
+# color-coded by TTL freshness. Helps you gauge whether your cache
+# is still warm or has expired.
 
 set -euo pipefail
 
 INPUT=$(cat)
 
-COMPACT=False COMPONENTS="" DIM="" LGRAY="" GREEN="" YELLOW="" RESET="" ICON=""
+COMPACT=False COMPONENTS="" DIM="" LGRAY="" GREEN="" YELLOW="" RED="" RESET="" ICON=""
 READ_PREFIX="read:" WRITE_PREFIX="write:" READ_PREFIX_COMPACT="R:" WRITE_PREFIX_COMPACT="W:"
-CACHE_READ=0 CACHE_WRITE=0
+CACHE_READ=0 CACHE_WRITE=0 CACHE_AGE="--" CACHE_AGE_TIER="none"
 
 eval "$(echo "$INPUT" | python3 -c "
 import json, os, sys
-from datetime import datetime
+from datetime import datetime, timezone
 d = json.load(sys.stdin)
 cfg = d.get('config', {})
 palette = cfg.get('palette', {})
 icons = cfg.get('icons', {})
+settings = cfg.get('settings', {})
 data = d.get('data', {})
 cw = data.get('context_window') or {}
 cu = cw.get('current_usage') or {}
@@ -29,8 +30,9 @@ print(f'DIM=\"{palette.get(\"muted\", \"\")}\"')
 print(f'LGRAY=\"{palette.get(\"subtle\", \"\")}\"')
 print(f'GREEN=\"{palette.get(\"success\", \"\")}\"')
 print(f'YELLOW=\"{palette.get(\"warning\", \"\")}\"')
+print(f'RED=\"{palette.get(\"danger\", \"\")}\"')
 print(f'RESET=\"{palette.get(\"reset\", \"\")}\"')
-print(f'ICON=\"{icons.get(\"icon\", \"\u23F1 \")}\"')
+print(f'ICON=\"{icons.get(\"icon\", \"\U0001F5C4 \")}\"')
 print(f'READ_PREFIX=\"{icons.get(\"cache_read\", \"read:\")}\"')
 print(f'WRITE_PREFIX=\"{icons.get(\"cache_write\", \"write:\")}\"')
 print(f'READ_PREFIX_COMPACT=\"{icons.get(\"cache_read_compact\", \"R:\")}\"')
@@ -40,6 +42,8 @@ cc = cu.get('cache_creation_input_tokens')
 print(f'CACHE_READ={cr if cr is not None else 0}')
 print(f'CACHE_WRITE={cc if cc is not None else 0}')
 print(f'HAS_CACHE={\"true\" if cr is not None else \"false\"}')
+cache_ttl = int(settings.get('cache_ttl', 300))
+caution_threshold = int(cache_ttl * 0.8)
 try:
     tp = data.get('transcript_path')
     last_ts = None
@@ -50,22 +54,33 @@ try:
                     e = json.loads(line)
                 except Exception:
                     continue
-                if e.get('type') != 'user':
-                    continue
-                c = e.get('message', {}).get('content')
-                if isinstance(c, list) and c and all(isinstance(x, dict) and x.get('type') == 'tool_result' for x in c):
-                    continue
                 ts = e.get('timestamp')
                 if ts:
                     last_ts = ts
     if last_ts:
-        dt = datetime.fromisoformat(last_ts.replace('Z', '+00:00')).astimezone()
-        print(f'TIMESTAMP=\"{dt.strftime(\"%H:%M:%S\")}\"')
+        dt = datetime.fromisoformat(last_ts.replace('Z', '+00:00'))
+        elapsed = max(0, int((datetime.now(timezone.utc) - dt).total_seconds()))
+        if elapsed < 60:
+            age_str = f'{elapsed}s'
+        elif elapsed < 3600:
+            age_str = f'{elapsed // 60}m{elapsed % 60:02d}s'
+        else:
+            age_str = f'{elapsed // 3600}h{elapsed % 3600 // 60:02d}m'
+        if elapsed < caution_threshold:
+            tier = 'warm'
+        elif elapsed < cache_ttl:
+            tier = 'caution'
+        else:
+            tier = 'expired'
+        print(f'CACHE_AGE=\"{age_str}\"')
+        print(f'CACHE_AGE_TIER={tier}')
+    else:
+        print('CACHE_AGE=\"--\"')
+        print('CACHE_AGE_TIER=none')
 except Exception:
-    pass
+    print('CACHE_AGE=\"--\"')
+    print('CACHE_AGE_TIER=none')
 " 2>/dev/null)"
-
-: "${TIMESTAMP:=$(date +%H:%M:%S)}"
 
 # Format token count as Xk
 fmt_k() {
@@ -93,10 +108,17 @@ fi
 parts=""
 
 if $show_time; then
+  case "$CACHE_AGE_TIER" in
+    warm)    AGE_COLOR="$GREEN" ;;
+    caution) AGE_COLOR="$YELLOW" ;;
+    expired) AGE_COLOR="$RED" ;;
+    *)       AGE_COLOR="$DIM" ;;
+  esac
+
   if [[ "$COMPACT" == "True" ]]; then
-    parts="${LGRAY}${TIMESTAMP}${RESET}"
+    parts="${AGE_COLOR}${CACHE_AGE}${RESET}"
   else
-    parts="${DIM}${ICON}${RESET}${LGRAY}${TIMESTAMP}${RESET}"
+    parts="${DIM}${ICON}${RESET}${AGE_COLOR}${CACHE_AGE}${RESET}"
   fi
 fi
 
@@ -115,9 +137,9 @@ if $show_cache && [[ "${HAS_CACHE:-false}" == "true" ]]; then
   fi
 fi
 
-# Fallback: if nothing to show, show just the timestamp
+# Fallback: if nothing to show, show just the cache age
 if [[ -z "$parts" ]]; then
-  parts="${LGRAY}${TIMESTAMP}${RESET}"
+  parts="${DIM}${CACHE_AGE}${RESET}"
 fi
 
 echo -e "{\"output\": \"$parts\", \"components\": [\"time\", \"cache\"]}"

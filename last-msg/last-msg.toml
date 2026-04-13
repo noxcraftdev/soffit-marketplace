@@ -1,13 +1,21 @@
-description = "Last interaction timestamp + cache token usage"
+description = "Cache freshness age + cache token usage"
 components = ["time", "cache"]
 has_compact = true
 
 [theme.time]
-label = "Timestamp"
-palette_role = "subtle"
+label = "Cache age (warm)"
+palette_role = "success"
+
+[theme.time_caution]
+label = "Cache age (caution)"
+palette_role = "warning"
+
+[theme.time_expired]
+label = "Cache age (expired)"
+palette_role = "danger"
 
 [theme.label]
-label = "Label"
+label = "Icon / empty"
 palette_role = "muted"
 
 [theme.cache_read]
@@ -21,7 +29,7 @@ palette_role = "warning"
 [icons.icon]
 label = "Icon"
 icons_field = "icon"
-default_value = "\u23F1 "
+default_value = "\U0001F5C4 "
 is_char = false
 
 [icons.cache_read]
@@ -47,3 +55,10 @@ label = "Cache write prefix (compact)"
 icons_field = "cache_write_compact"
 default_value = "W:"
 is_char = false
+
+[settings.cache_ttl]
+label = "Cache TTL (seconds)"
+type = "int"
+default = 300
+min = 60
+max = 600
